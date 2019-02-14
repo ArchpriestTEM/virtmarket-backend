@@ -1,0 +1,31 @@
+{
+  "name": "virtmarket-backend",
+  "version": "1.0.0",
+  "description": "A backend for a virtual stock market using Node, Express and Mongoose.",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "server": "nodemon server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ArchpriestTEM/virtmarket-backend.git"
+  },
+  "author": "Tyler E. McWilliams",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/ArchpriestTEM/virtmarket-backend/issues"
+  },
+  "homepage": "https://github.com/ArchpriestTEM/virtmarket-backend#readme",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "body-parser": "^1.18.3",
+    "express": "^4.16.4",
+    "is-empty": "^1.2.0",
+    "mongoose": "^5.4.12",
+    "nodemon": "^1.18.10",
+    "passport": "^0.4.0",
+    "passport-jwt": "^4.0.0",
+    "validator": "^10.11.0"
+  }
+}
