@@ -5,6 +5,11 @@ const Schema = mongoose.Schema;
 const Stock = new Schema({
   name: String,
   symbol: String,
+  totalvolume: Number,
+  owner: {
+    type: Schema.Types.ObjectId,
+    ref: "users"
+  },
   orders: [
     {
       user: {
@@ -13,16 +18,27 @@ const Stock = new Schema({
       },
       shares: Number,
       price: Number,
-      ordertype: String
+      ordertype: String,
+      date: {
+        type: Date,
+        default: Date.now
+      }
     }
   ],
   history: [
     {
       price: Number,
-      volume: Number
+      volume: Number,
+      date: {
+        type: Date,
+        default: Date.now
+      }
     }
   ],
-  creationdate: Date.now
+  creationdate: {
+    type: Date,
+    default: Date.now()
+  }
 });
 
 module.exports = mongoose.model("stocks", Stock);
