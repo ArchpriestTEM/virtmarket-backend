@@ -22,6 +22,12 @@ const User = new Schema({
       },
       shares: Number
     }
+  ],
+  orders: [
+    {
+      type: Schema.Types.ObjectId,
+      ref: "orders"
+    }
   ]
 });
 

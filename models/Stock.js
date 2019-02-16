@@ -12,17 +12,8 @@ const Stock = new Schema({
   },
   orders: [
     {
-      user: {
-        type: Schema.Types.ObjectId,
-        ref: "users"
-      },
-      shares: Number,
-      price: Number,
-      ordertype: String,
-      date: {
-        type: Date,
-        default: Date.now
-      }
+      type: Schema.Types.ObjectId,
+      ref: "orders"
     }
   ],
   history: [
