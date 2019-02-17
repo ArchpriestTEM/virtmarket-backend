@@ -31,4 +31,10 @@ const User = new Schema({
   ]
 });
 
+// middleware
+User.post("remove", next => {
+  mongoose.model("orders").remove({ user: this_id });
+  mongoose.model("stocks").remove({ orders: this._id }, next);
+});
+
 module.exports = mongoose.model("users", User);

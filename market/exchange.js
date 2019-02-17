@@ -4,83 +4,68 @@ const isEmpty = require("is-empty");
 const User = require("../models/User");
 const Stock = require("../models/Stock");
 
-// takes transct object and done callback, returns nothing
-const exchange = (transct, done) => {
-  // determine transaction details
-  const cost = transct.ask * transct.shares;
+const exchange = (order, match) => {
+  // make sure the match still exists
+  if (isEmpty(match)) {
+    return;
+  }
 
-  // find both participants
-  Promise.all([
-    User.findById(transct.buyerId).populate([
-      {
-        path: "positions",
-        populate: {
-          path: "stocks"
-        }
-      },
-      {
-        path: "orders",
-        populate: {
-          path: "stocks"
-        }
-      }
-    ]),
-    User.findById(transct.sellerId).populate([
-      {
-        path: "positions",
-        populate: {
-          path: "stocks"
-        }
-      },
-      {
-        path: "orders",
-        populate: {
-          path: "stocks"
-        }
-      }
-    ])
-  ]).then(([buyer, seller]) => {
-    // if one isn't found, return false
-    if (!buyer || !seller) {
-      return done(false);
-    }
-    // verify that the buyer has the money
-    if (buyer.money < cost) {
-      return done(false);
-    }
-    // verify that the seller has the shares to sell
-    const sellerShares = seller.positions.find(stock => {
-      return stock._id == transct.stock;
-    });
-    if (sellerShares.shares < transct.shares) {
-      return false;
-    }
-    // add the money to the seller and subtract from the buyer
-    seller.money += cost;
-    buyer.money -= cost;
-    // add the shares to the buyer
-    const buyerPosIndex = buyer.positions.findIndex(stock => {
-      return stock._id == transct.stock;
-    });
-    if (buyerPosIndex < 0) {
-      const newPos = new Schema({
-        stock: transct.stock,
-        shares: transct.shares
-      });
-      buyer.positions.push(newPos);
-    } else {
-      buyer.positions[buyerPosIndex].shares += transct.shares;
-    }
-    // remove the shares from the seller
-    const sellerPosIndex = seller.positions.findIndex(stock => {
-      return stock._id == transct.stock;
-    });
-    seller.positions[sellerPosIndex].shares -= transct.shares;
-    if (seller.positions[sellerPosIndex].shares <= 0) {
-      seller.positions.splice(sellerPosIndex, 1);
-    }
-    done(true);
+  // determine buyer and seller
+  const buyer = {};
+  const seller = {};
+  const price = 0;
+  const orderIsBuy = true;
+  switch (order.ordertype) {
+    case "BUY":
+      buyer = order.user;
+      seller = match.user;
+      price = match.price;
+      break;
+    case "SELL":
+      seller = order.user;
+      buyer = match.user;
+      price = match.price;
+      orderIsBuy = false;
+      break;
+  }
+
+  // if match can absorb, sharesTraded = orders.shares
+  const sharesTraded = match.shares;
+  if (match.shares > order.shares) {
+    sharesTraded = order.shares;
+  }
+
+  // buyer fulfillment
+  buyer.money -= ask * sharesTraded;
+  const position = buyer.positions.find(position => {
+    return position.stock == order.stock._id;
   });
+  if (isEmpty(position)) {
+    position = buyer.positions.push({
+      stock: order.stock._id,
+      shares: 0
+    });
+  }
+  position.shares += sharesTraded;
+
+  //seller fulfillment
+  if (orderIsBuy) {
+    match.shares -= sharesTraded;
+  } else {
+    order.shares -= sharesTraded;
+  }
+  const index = seller.positions.findIndex(position => {
+    return (position.stock = order.stock._id);
+  });
+  seller.positions[index].shares -= sharesTraded;
+  if (seller.positions[index].shares == 0) {
+    seller.positions.splice(index, 1);
+  }
+
+  // remove
+  if (match.shares == 0) {
+    match.remove();
+  }
 };
 
 module.exports = exchange;

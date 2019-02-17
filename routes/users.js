@@ -20,7 +20,8 @@ router.get("/:id", (req, res) => {
         return res.json({
           name: user.name,
           avatar: user.avatar,
-          positions: user.positions
+          positions: user.positions,
+          orders: user.orders
         });
       } else {
         return res.status(404).json({ msg: "User not found." });

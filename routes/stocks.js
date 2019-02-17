@@ -9,20 +9,24 @@ const orderValidation = require("../validation/order-validation");
 // Models
 const User = require("../models/User");
 const Stock = require("../models/Stock");
+const Order = require("../models/Order");
 
 // GET /all
 // Fetches all active stocks
 router.get("/all", (req, res) => {
-  Stock.find((err, stocks) => {
-    if (err) {
-      return res.status(400).json(err);
-    }
-    if (isEmpty(stocks)) {
-      return res.status(404).json({ msg: "No stocks found" });
-    } else {
-      return res.json(stocks);
-    }
-  });
+  Stock.find()
+    .populate("orders")
+    .exec((err, stocks) => {
+      if (err) {
+        return res.status(400).json(err);
+      }
+
+      if (isEmpty(stocks)) {
+        return res.status(404).json({ msg: "No stocks found" });
+      } else {
+        return res.json({ stocks });
+      }
+    });
 });
 
 // GET /:id
@@ -124,26 +128,39 @@ router.post(
       if (!user) {
         return res.status(404).json({ msg: "User not found" });
       } else {
-        // determine if the user can afford this order
+        // predetermine if the user can afford this order
         const orderCost = req.body.shares * req.body.price;
         if (orderCost >= req.user.money) {
           return res.json({ msg: "You cannot afford this order." });
         }
-        // to be sent to queue
-        const order = {
-          stockId: req.params.id,
-          type: "BUY",
-          user: user,
-          shares: req.body.shares,
-          price: req.body.price
-        };
-        marketQueue.add(order, err => {
-          if (!isEmpty(err)) {
-            return res.status(400).json(err);
-          } else {
-            return res.json({ msg: "Success" });
-          }
-        });
+        // make sure it's a valid stock
+        Stock.findById(req.params.id)
+          .populate({
+            path: "orders",
+            populate: {
+              path: "user"
+            }
+          })
+          .exec((err, stock) => {
+            if (err) {
+              return res.status(400).json(err);
+            }
+            // to be sent to queue
+            const newOrder = new Order({
+              stock: stock,
+              user: user,
+              ordertype: "BUY",
+              shares: req.body.shares,
+              price: req.body.price
+            });
+            marketQueue.add(newOrder, err => {
+              if (err) {
+                return res.status(400).json(err);
+              } else {
+                return res.json({ msg: "Success", stock });
+              }
+            });
+          });
       }
     });
   }
@@ -168,27 +185,40 @@ router.post(
         return res.status(404).json({ msg: "User not found" });
       } else {
         // determine if the user can afford this order in terms of shares
-        const orderCost = req.body.shares;
-        const position = user.positions.find(pos => {
+        const index = user.positions.findIndex(pos => {
           return pos.stock._id == req.params.id;
         });
-        if (!isEmpty(position) && position.shares < orderCost) {
+        if (index < 0 || user.positions[index].shares < req.params.shares) {
           return res.json({ msg: "You do not have enough shares." });
         }
-        const order = {
-          stockId: req.params.id,
-          type: "SELL",
-          user: user,
-          shares: req.body.shares,
-          price: req.body.price
-        };
-        marketQueue.add(order, err => {
-          if (!isEmpty(err)) {
-            return res.status(400).json(err);
-          } else {
-            return res.json({ msg: "Success" });
-          }
-        });
+        // make sure it's a valid stock
+        Stock.findById(req.params)
+          .populate({
+            path: "orders",
+            populate: {
+              path: "user"
+            }
+          })
+          .exec((err, stock) => {
+            if (err) {
+              return res.status(400).json(err);
+            }
+            // to be sent to queue
+            const newOrder = new Order({
+              stock: stock,
+              user: user,
+              ordertype: "SELL",
+              shares: req.body.shares,
+              price: req.body.price
+            });
+            marketQueue.add(newOrder, err => {
+              if (err) {
+                return res.status(400).json(err);
+              } else {
+                return res.json({ msg: "Success", stock });
+              }
+            });
+          });
       }
     });
   }

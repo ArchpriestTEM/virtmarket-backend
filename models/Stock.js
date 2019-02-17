@@ -32,4 +32,10 @@ const Stock = new Schema({
   }
 });
 
+// middleware
+Stock.post("remove", next => {
+  mongoose.model("users").remove({ owned: this._id, positions: this._id });
+  mongoose.model("orders").remove({ stock: this._id }, next);
+});
+
 module.exports = mongoose.model("stocks", Stock);

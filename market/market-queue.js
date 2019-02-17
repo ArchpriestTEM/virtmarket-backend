@@ -9,21 +9,6 @@ function MarketQueue() {
   this.queue = [];
   this.running = false;
 
-  // adder, also starts queue if empty
-  this.add = (order, cb) => {
-    this.queue.push(order);
-
-    if (!this.running) {
-      this.running = true;
-      let timer = setInterval(() => {
-        if (!this.running) {
-          clearInterval(timer);
-        }
-        this.match();
-      }, 100);
-    }
-    cb({});
-  };
   // match order
   this.match = () => {
     const errors = {};
@@ -31,22 +16,15 @@ function MarketQueue() {
       this.running = false;
       return;
     }
-    const { price, shares, stockId, type, user } = this.queue.shift();
-    // retrieve stock
-    console.log(stockId);
-    Stock.findById(stockId, (err, stock) => {
-      if (err) {
-        errors.mongo = err;
-      }
-      if (isEmpty(stock)) {
-        return (errors.stock = "Stock not found");
-      }
-      // BUY
-      if (type === "BUY") {
-        // find matches
-        const matches = stock.orders
+    const { order, cb } = this.queue.shift();
+
+    // set up by ordertype
+    let matches = [];
+    switch (order.ordertype) {
+      case "BUY":
+        matches = order.stock.orders
           .filter(order => {
-            order.type === "SELL";
+            order.ordertype === targetType;
           })
           .filter(order => {
             order.price <= price;
@@ -54,55 +32,11 @@ function MarketQueue() {
           .sort((a, b) => {
             a.price - b.price;
           });
-        //loop through, stop if buy exhausted
-        for (match in matches) {
-          if (shares == 0) {
-            break;
-          }
-          let curShares = 0;
-          if (match.shares >= shares) {
-            curShares = shares;
-          } else {
-            curShares = match.shares;
-          }
-          exchange(
-            {
-              buyerId: user,
-              sellerId: match.user,
-              shares: curShares,
-              price: match.price
-            },
-            success => {
-              if (!success) {
-                errors.order +=
-                  "Couldn't finish transaction with order " + match._id;
-              } else {
-                const index = stock.orders.findIndex(
-                  order => order._id == match._id
-                );
-                stock.orders[index];
-              }
-            }
-          );
-        }
-        if (shares > 0) {
-          stock.orders.push(
-            new Order({
-              user: user,
-              price: price,
-              shares: shares,
-              ordertype: "BUY"
-            })
-          );
-        }
-        stock.save();
-      }
-      // SELL
-      if (type === "SELL") {
-        // find matches
-        const matches = stock.orders
+        break;
+      case "SELL":
+        matches = order.stock.orders
           .filter(order => {
-            order.type === "BUY";
+            order.ordertype === "BUY";
           })
           .filter(order => {
             order.price <= price;
@@ -110,51 +44,40 @@ function MarketQueue() {
           .sort((a, b) => {
             b.price - a.price;
           });
-        //loop through, stop if buy exhausted
-        for (match in matches) {
-          if (shares == 0) {
-            break;
-          }
-          let curShares = 0;
-          if (match.shares >= shares) {
-            curShares = shares;
-          } else {
-            curShares = match.shares;
-          }
-          exchange(
-            {
-              buyerId: match.user,
-              sellerId: user,
-              shares: curShares,
-              price: match.price
-            },
-            success => {
-              if (!success) {
-                errors.order +=
-                  "Couldn't finish transaction with order " + match._id;
-              } else {
-                const index = stock.orders.findIndex(
-                  order => order._id == match._id
-                );
-                stock.orders.splice(index, 1);
-              }
-            }
-          );
-        }
-        // if matching didn't exhaust, put the order up
-        if (shares > 0) {
-          stock.orders.push(
-            new Order({
-              user: user,
-              price: price,
-              shares: shares,
-              ordertype: "SELL"
-            })
-          );
-        }
-        stock.save();
+        break;
+    }
+
+    // loop while there are matches and original order isn't empty
+    while (!isEmpty(matches) && order.shares > 0) {
+      exchange(order, matches.shift());
+    }
+
+    // if the order wasn't competely fullfilled, post it up
+    if (order.shares > 0) {
+      order.save();
+    }
+
+    // finally, invoke the call back
+    cb(errors);
+  };
+
+  // run queue
+  this.run = () => {
+    let timer = setInterval(() => {
+      if (isEmpty(this.queue)) {
+        this.running = false;
+        clearInterval(timer);
       }
-    });
+      this.match();
+    }, 1);
+  };
+
+  // adder, also starts queue if empty
+  this.add = (order, cb) => {
+    this.queue.push({ order, cb });
+    if (!this.running) {
+      this.run();
+    }
   };
 }
 
