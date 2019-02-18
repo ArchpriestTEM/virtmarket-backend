@@ -32,7 +32,7 @@ const User = new Schema({
 });
 
 // middleware
-User.post("remove", next => {
+User.post("deleteOne", next => {
   mongoose.model("orders").remove({ user: this_id });
   mongoose.model("stocks").remove({ orders: this._id }, next);
 });

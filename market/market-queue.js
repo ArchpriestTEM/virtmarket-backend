@@ -10,7 +10,7 @@ function MarketQueue() {
   this.running = false;
 
   // match order
-  this.match = () => {
+  this.match = async () => {
     const errors = {};
     if (isEmpty(this.queue)) {
       this.running = false;
@@ -23,53 +23,62 @@ function MarketQueue() {
     switch (order.ordertype) {
       case "BUY":
         matches = order.stock.orders
-          .filter(order => {
-            order.ordertype === targetType;
+          .filter(potOrder => {
+            return potOrder.ordertype == "SELL";
           })
-          .filter(order => {
-            order.price <= price;
+          .filter(potOrder => {
+            return potOrder.price <= order.price;
           })
           .sort((a, b) => {
-            a.price - b.price;
+            return a.price - b.price;
           });
         break;
       case "SELL":
         matches = order.stock.orders
-          .filter(order => {
-            order.ordertype === "BUY";
+          .filter(potOrder => {
+            return potOrder.ordertype == "BUY";
           })
-          .filter(order => {
-            order.price <= price;
+          .filter(potOrder => {
+            return potOrder.price <= order.price;
           })
           .sort((a, b) => {
-            b.price - a.price;
+            return b.price - a.price;
           });
         break;
     }
-
     // loop while there are matches and original order isn't empty
+
     while (!isEmpty(matches) && order.shares > 0) {
-      exchange(order, matches.shift());
+      await exchange(order, matches.shift()).catch(err => {
+        console.log(err);
+      });
     }
 
     // if the order wasn't competely fullfilled, post it up
     if (order.shares > 0) {
+      if (order.ordertype == "BUY") {
+        order.user.money -= order.shares * order.price;
+      } else {
+        let sellpos = order.user.positions.findIndex(position => {
+          return position.stock.toString() == order.stock._id;
+        });
+
+        order.user.positions[sellpos].shares -= order.shares;
+      }
       order.save();
     }
 
     // finally, invoke the call back
     cb(errors);
+    this.run();
   };
 
-  // run queue
+  // run queue or check
   this.run = () => {
-    let timer = setInterval(() => {
-      if (isEmpty(this.queue)) {
-        this.running = false;
-        clearInterval(timer);
-      }
-      this.match();
-    }, 1);
+    if (isEmpty(this.queue)) {
+      return (this.running = false);
+    }
+    this.match();
   };
 
   // adder, also starts queue if empty

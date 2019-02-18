@@ -8,7 +8,6 @@ const opts = {
 };
 
 const validateJwt = passport => {
-  console.log("Tried");
   passport.use(
     new Strategy(opts, (jwt_payload, done) => {
       User.findOne({ _id: jwt_payload.id }, (err, user) => {

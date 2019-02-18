@@ -95,10 +95,15 @@ router.post(
                   symbol: req.body.symbol,
                   owner: user.id
                 });
+                user.positions.push({
+                  stock: newStock._id,
+                  shares: 1000
+                });
                 newStock.save((err, stock) => {
                   if (err) {
                     return res.status(400).json(err);
                   }
+                  user.save();
                   return res.json(stock);
                 });
               }
@@ -145,6 +150,9 @@ router.post(
             if (err) {
               return res.status(400).json(err);
             }
+            if (isEmpty(stock)) {
+              return res.status(400).json({ msg: "Invalid stock id" });
+            }
             // to be sent to queue
             const newOrder = new Order({
               stock: stock,
@@ -154,7 +162,7 @@ router.post(
               price: req.body.price
             });
             marketQueue.add(newOrder, err => {
-              if (err) {
+              if (!isEmpty(err)) {
                 return res.status(400).json(err);
               } else {
                 return res.json({ msg: "Success", stock });
@@ -188,11 +196,11 @@ router.post(
         const index = user.positions.findIndex(pos => {
           return pos.stock._id == req.params.id;
         });
-        if (index < 0 || user.positions[index].shares < req.params.shares) {
+        if (index < 0 || user.positions[index].shares < req.body.shares) {
           return res.json({ msg: "You do not have enough shares." });
         }
         // make sure it's a valid stock
-        Stock.findById(req.params)
+        Stock.findById(req.params.id)
           .populate({
             path: "orders",
             populate: {
@@ -203,6 +211,9 @@ router.post(
             if (err) {
               return res.status(400).json(err);
             }
+            if (isEmpty(stock)) {
+              return res.status(400).json({ msg: "Invalid stock id" });
+            }
             // to be sent to queue
             const newOrder = new Order({
               stock: stock,
@@ -212,7 +223,7 @@ router.post(
               price: req.body.price
             });
             marketQueue.add(newOrder, err => {
-              if (err) {
+              if (!isEmpty(err)) {
                 return res.status(400).json(err);
               } else {
                 return res.json({ msg: "Success", stock });

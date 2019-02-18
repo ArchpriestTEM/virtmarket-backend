@@ -87,7 +87,6 @@ router.post("/login", (req, res) => {
       $or: [{ email: req.body.email }, { name: req.body.name }]
     },
     (err, user) => {
-      console.log("First");
       if (err) {
         return res.status(400).json(err);
       }
