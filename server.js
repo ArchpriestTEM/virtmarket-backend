@@ -8,6 +8,7 @@ const { mongoDb } = require("./config/keys.js");
 mongoose.connect(mongoDb, err => {
   console.log(err || "Connected to database");
 });
+
 // middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded());

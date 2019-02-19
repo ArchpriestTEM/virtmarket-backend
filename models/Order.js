@@ -24,7 +24,7 @@ const Order = new Schema({
   }
 });
 
-// middleware
+// delete every reference
 Order.post("findOneAndDelete", delOrd => {
   Stock.findOne({ _id: delOrd.stock._id }).then(stock => {
     let stockIndex = stock.orders.findIndex(order => {
@@ -43,6 +43,7 @@ Order.post("findOneAndDelete", delOrd => {
   });
 });
 
+// save to stock's order list and user's
 Order.post("save", (doc, next) => {
   doc.stock.orders.push(doc);
   doc.stock.save().then(product => {

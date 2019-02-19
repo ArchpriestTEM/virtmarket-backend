@@ -8,7 +8,7 @@ const User = new Schema({
   password: String,
   avatar: String,
   money: Number,
-  owned: [
+  ceo: [
     {
       type: Schema.Types.ObjectId,
       ref: "stocks"
