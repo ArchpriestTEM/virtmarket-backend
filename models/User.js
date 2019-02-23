@@ -1,5 +1,8 @@
 const mongoose = require("mongoose");
 
+const Stock = require("./Stock");
+const Order = require("./Order");
+
 const Schema = mongoose.Schema;
 
 const User = new Schema({
@@ -32,9 +35,12 @@ const User = new Schema({
 });
 
 // middleware
-User.post("deleteOne", next => {
-  mongoose.model("orders").remove({ user: this_id });
-  mongoose.model("stocks").remove({ orders: this._id }, next);
+User.post("findOneAndDelete", doc => {
+  Order.find({_id: doc.orders._id}).then(async orders=>{
+    orders.forEach(order=>{
+      await Order.findOneAndDelete({_id : order._id})
+    })
+  })
 });
 
 module.exports = mongoose.model("users", User);
