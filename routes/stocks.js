@@ -103,6 +103,7 @@ router.post(
                   if (err) {
                     return res.status(400).json(err);
                   }
+                  user.owned.push(stock);
                   user.save();
                   return res.json(stock);
                 });

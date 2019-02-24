@@ -16,7 +16,6 @@ const exchange = (order, match) => {
     let buyer = {};
     let seller = {};
     let price = 0;
-    let orderIsBuy = true;
     switch (order.ordertype) {
       case "BUY":
         buyer = order.user;
