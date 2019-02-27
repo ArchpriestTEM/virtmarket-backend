@@ -236,4 +236,33 @@ router.post(
   }
 );
 
+// DELETE /delete/:id
+// deletes stock by :id
+router.delete(
+  "/delete/:id",
+  passport.authenticate("jwt", { session: false }),
+  (req, res) => {
+    User.findById(req.user.id)
+      .then(user => {
+        const index = user.owned.findIndex(own => {
+          return own._id == req.params.id;
+        });
+        if (index == -1) {
+          return res.status(404).json({ msg: "Stock not found" });
+        } else {
+          Stock.findOneAndDelete({ _id: req.params.id })
+            .then(() => {
+              return res.json({ msg: "Success" });
+            })
+            .catch(err => {
+              return res.json(err);
+            });
+        }
+      })
+      .catch(err => {
+        return res.json(err);
+      });
+  }
+);
+
 module.exports = router;
